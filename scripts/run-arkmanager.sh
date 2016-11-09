@@ -64,7 +64,7 @@ if [ ${BACKUPONSTART} -eq 1 ] && [ "$(ls -A server/ShooterGame/Saved/SavedArks/)
     arkmanager backup
 fi
 
-# Server
+# Server start
 if [ ${UPDATEONSTART} -eq 0 ]; then
     arkmanager start -noautoupdate
 else
