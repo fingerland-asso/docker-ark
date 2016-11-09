@@ -1,0 +1,14 @@
+[Unit]
+Description=ARK: Survival Evolved - server
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+TimeoutStartSec=0
+EnvironmentFile=/etc/myserver.env
+ExecStartPre=-/usr/bin/docker kill ${CONTAINER}
+ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+ExecStartPre=/usr/bin/docker pull ${IMAGE}
+ExecStart=/usr/bin/docker run -ti ${OPTIONS} ${IMAGE}
+ExecStop=/usr/bin/docker stop ${CONTAINER}
