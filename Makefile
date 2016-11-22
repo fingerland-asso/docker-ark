@@ -29,7 +29,7 @@ volume:
 	@sudo chown -R 1000:1000 ${VOLUME}
 
 run: volume
-	@docker run -ti --restart=always ${OPTIONS} ${IMAGE}
+	@docker run -ti ${OPTIONS} ${IMAGE}
 
 systemd-service:
 	@echo "CONTAINER=${CONTAINER}" > ${SERVICE_ENV_FILE}
