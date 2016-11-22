@@ -18,7 +18,7 @@ function install-arkmanager {
     cd "${INSTALL_DIR}/tmp/ark-server-tools-${ARKMANAGER_VERSION}/tools"
     chmod +x install.sh
     ./install.sh --prefix "${INSTALL_DIR}/server-tools" --me
-    rm -fr "${INSTALL_DIR}/ark-server-tools/.*"
+    rm -fr "${INSTALL_DIR}/ark-server-tools/.*" "${INSTALL_DIR}/tmp"
 }
 
 function install-ark {
