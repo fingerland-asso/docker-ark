@@ -11,51 +11,57 @@ function install-steamcmd {
 }
 
 function install-arkmanager {
-    echo "ark-server-tools not found. Installing..."
+    echo "server-tools not found. Installing..."
     mkdir -p "${INSTALL_DIR}/tmp"
     cd "${INSTALL_DIR}/tmp"
     curl -Ss "https://codeload.github.com/FezVrasta/ark-server-tools/tar.gz/v${ARKMANAGER_VERSION}" | tar -xz
     cd "${INSTALL_DIR}/tmp/ark-server-tools-${ARKMANAGER_VERSION}/tools"
     chmod +x install.sh
-    ./install.sh --prefix "${INSTALL_DIR}/ark-server-tools"
+    ./install.sh --prefix "${INSTALL_DIR}/server-tools" --me
+    rm -fr "${INSTALL_DIR}/ark-server-tools/.*"
 }
 
 function install-ark {
+    cd ${INSTALL_DIR}
     echo "No game files found. Installing..."
     mkdir -p ${INSTALL_DIR}/server/ShooterGame/Saved/SavedArks
 	mkdir -p ${INSTALL_DIR}/server/ShooterGame/Content/Mods
 	mkdir -p ${INSTALL_DIR}/server/ShooterGame/Binaries/Linux/
 	touch ${INSTALL_DIR}/server/ShooterGame/Binaries/Linux/ShooterGameServer
-    /usr/local/bin/arkmanager install --spinner
+    ${INSTALL_DIR}/server-tools/bin/arkmanager install --spinner
     echo "Ark instance is now installed, please check your configuration in the volume linked on ${INSTALL_DIR} before restart the docker"
-    echo "- <volume>/instances"
-    echo "- <volume>/Game.ini & GameUserSettings.ini"
-    echo "- <volume>/arkmanager.cfg"
+    echo "- <volume>/config/instances"
+    echo "- <volume>/config/Game.ini & GameUserSettings.ini"
+    echo "- <volume>/config/arkmanager.cfg"
     exit
 }
 
 function fix-volume {
-    # we add user settings
-    [ ! -f "${INSTALL_DIR}/arkmanager.cfg" ] && cp "/home/steam/samples/arkmanager.cfg" "${INSTALL_DIR}/arkmanager.cfg"
-    ln -s "${INSTALL_DIR}/arkmanager.cfg" "/home/steam/.arkmanager.cfg"
+    # we add user config
+    [ ! -d "${INSTALL_DIR}/config" ] && mkdir -p "${INSTALL_DIR}/config"
+    [ ! -f "${INSTALL_DIR}/config/arkmanager.cfg" ] && cp "/home/steam/samples/arkmanager.cfg" "${INSTALL_DIR}/config/arkmanager.cfg"
+    ln -s "${INSTALL_DIR}/config/arkmanager.cfg" "/home/steam/.arkmanager.cfg"
 
     # we get the instances
-    [ ! -d "${INSTALL_DIR}/instances" ] && mkdir "${INSTALL_DIR}/instances"
-    [ ! -f "${INSTALL_DIR}/instances/main.cfg" ] && cp "/home/steam/samples/main.cfg" "${INSTALL_DIR}/instances"
+    [ ! -d "${INSTALL_DIR}/config/instances" ] && mkdir "${INSTALL_DIR}/config/instances"
+    [ ! -f "${INSTALL_DIR}/config/instances/main.cfg" ] && cp "/home/steam/samples/main.cfg" "${INSTALL_DIR}/config/instances"
     mkdir -p "/home/steam/.config/arkmanager"
-    ln -s "${INSTALL_DIR}/instances" "/home/steam/.config/arkmanager/instances"
+    ln -s "${INSTALL_DIR}/config/instances" "/home/steam/.config/arkmanager/instances"
 
     # we fix volume tree
-    [ ! -d "${INSTALL_DIR}/log" ] && mkdir "${INSTALL_DIR}/log"
-    [ ! -d "${INSTALL_DIR}/backup" ] && mkdir "${INSTALL_DIR}/backup"
-    [ ! -d "${INSTALL_DIR}/staging" ] && mkdir "${INSTALL_DIR}/staging"
-    [ ! -L "${INSTALL_DIR}/Game.ini" ] && ln -s "${INSTALL_DIR}/server/ShooterGame/Saved/Config/LinuxServer/Game.ini" "${INSTALL_DIR}/Game.ini"
-    [ ! -L "${INSTALL_DIR}/GameUserSettings.ini" ] && ln -s "${INSTALL_DIR}/server/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini" "${INSTALL_DIR}/GameUserSettings.ini"
+    [ ! -d "${INSTALL_DIR}/config/log" ] && mkdir "${INSTALL_DIR}/config/log"
+    [ ! -d "${INSTALL_DIR}/config/backup" ] && mkdir "${INSTALL_DIR}/config/backup"
+    [ ! -d "${INSTALL_DIR}/config/staging" ] && mkdir "${INSTALL_DIR}/config/staging"
+
+    # We check Ark server config
+    cd "${INSTALL_DIR}/config"
+    [ ! -L Game.ini ] && ln -s "../server/ShooterGame/Saved/Config/LinuxServer/Game.ini" Game.ini
+    [ ! -L GameUserSettings.ini ] && ln -s "../server/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini" GameUserSettings.ini
 }
 
 
 function stop {
-	if [ ${BACKUPONSTOP} -eq 1 ] && [ "$(ls -A ${INSTALL_DIR}/server/ShooterGame/Saved/SavedArks)" ]; then
+	if [ ${BACKUPONSTOP} -eq 1 ] && [ "$(ls -A server/ShooterGame/Saved/SavedArks)" ]; then
 		echo "Backuping on stop..."
 		arkmanager backup
 	fi
@@ -68,29 +74,30 @@ function stop {
 }
 
 ##################################### Main #####################################
-# We fix the volume if needed
-fix-volume
-
 # we check if steamcmd is installed
 [ ! -d "${INSTALL_DIR}/steamcmd" ] && install-steamcmd
 
 # we check if arkmanager is installed
-[ ! -f "/usr/local/bin/arkmanager" ] && install-arkmanager
+[ ! -f "${INSTALL_DIR}/server-tools/bin/arkmanager" ] && install-arkmanager
+
+# We fix the volume if needed
+fix-volume
 
 # We check if the game need to be installed
 [ ! -d "${INSTALL_DIR}/server" ] || [ ! -f "${INSTALL_DIR}/server/arkversion" ] && install-ark
 
+cd "${INSTALL_DIR}"
 # Backup on stat is unable ?
 if [ ${BACKUPONSTART} -eq 1 ] && [ "$(ls -A server/ShooterGame/Saved/SavedArks/)" ]; then
     echo "Backuping..."
-    arkmanager backup
+    ${INSTALL_DIR}/server-tools/bin/arkmanager backup
 fi
 
 # Server start
 if [ ${UPDATEONSTART} -eq 0 ]; then
-    arkmanager start -noautoupdate
+    ${INSTALL_DIR}/server-tools/bin/arkmanager start -noautoupdate
 else
-    arkmanager start
+    ${INSTALL_DIR}/server-tools/bin/arkmanager start
 fi
 
 echo "Server is running..."
